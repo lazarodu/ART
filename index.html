@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Didático de ART-1 - Livro Silva, Spatti & Flauzino (Capítulo 10)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.88);
+      --bg-glass: rgba(30, 41, 59, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(99, 102, 241, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-store: #10b981;
+      --accent-run: #f43f5e;
+      --accent-warning: #f59e0b;
+      --pos: #22d3ee;
+      --neg: #f472b6;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-primary); color: var(--text-main); font-family: var(--font-sans);
+      min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse at 15% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+        radial-gradient(ellipse at 85% 90%, rgba(6, 182, 212, 0.09) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 60%);
+      background-attachment: fixed;
+    }
+    header {
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border-color);
+      display: flex; justify-content: space-between; align-items: center;
+      backdrop-filter: blur(12px); background: rgba(10, 14, 23, 0.85);
+      position: sticky; top: 0; z-index: 50; gap: 1rem; flex-wrap: wrap;
+    }
+    .logo-area { display: flex; align-items: center; gap: 0.85rem; }
+    .badge-chip {
+      background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white; font-size: 0.75rem; font-weight: 800;
+      letter-spacing: 0.05em; padding: 0.3rem 0.65rem; border-radius: 6px; text-transform: uppercase;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+    h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    h1 span { background: linear-gradient(to right, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header-status { display: flex; align-items: center; gap: 1rem; }
+    .phase-indicator {
+      display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.85rem; border-radius: 9999px;
+      font-size: 0.825rem; font-weight: 600; background: var(--bg-glass); border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .phase-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); transition: all 0.3s; }
+    .phase-indicator.run .phase-dot { background: var(--accent-run); box-shadow: 0 0 10px var(--accent-run); }
+    .phase-indicator.ok .phase-dot { background: var(--accent-store); box-shadow: 0 0 10px var(--accent-store); }
+    .phase-indicator.warn .phase-dot { background: var(--accent-warning); box-shadow: 0 0 10px var(--accent-warning); }
+    .phase-indicator.idle .phase-dot { background: var(--accent-secondary); box-shadow: 0 0 8px var(--accent-secondary); }
+
+    main {
+      flex: 1; padding: 1.25rem 2rem; display: grid; grid-template-columns: 370px 1fr 440px;
+      gap: 1.5rem; max-width: 1920px; margin: 0 auto; width: 100%;
+    }
+    @media (max-width: 1440px) { main { grid-template-columns: 350px 1fr; } .col-math { grid-column: span 2; } }
+    @media (max-width: 1024px) { main { grid-template-columns: 1fr; padding: 1rem; } .col-math { grid-column: span 1; } }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; overflow: hidden;
+      backdrop-filter: blur(16px); display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    .card-header {
+      padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex;
+      justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); gap: 0.75rem;
+    }
+    .card-title { font-size: 0.88rem; font-weight: 700; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+    .card-body { padding: 1.2rem; display: flex; flex-direction: column; gap: 1.15rem; overflow-y: auto; }
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .sub-label { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
+    .form-control {
+      background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); border-radius: 8px; color: #fff;
+      font-family: var(--font-mono); font-size: 0.85rem; padding: 0.5rem 0.75rem; outline: none; transition: all 0.2s; width: 100%;
+    }
+    .form-control:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25); }
+    select.form-control option { background: #0f172a; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn {
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.55rem 0.8rem; border-radius: 8px; font-family: var(--font-sans); font-size: 0.8rem; font-weight: 600;
+      transition: all 0.2s; border: 1px solid transparent; user-select: none;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-store { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .btn-store:hover { background: rgba(16, 185, 129, 0.25); }
+    .btn-run { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .btn-run:hover { background: rgba(244, 63, 94, 0.25); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: #cbd5e1; cursor: pointer; }
+    .check-row input { accent-color: var(--accent-primary); width: 15px; height: 15px; }
+    .stage-tag { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.1rem 0.45rem; border-radius: 4px; }
+    .tag-1 { background: rgba(16,185,129,0.2); color: #34d399; }
+    .tag-2 { background: rgba(244,63,94,0.2); color: #fb7185; }
+
+    .stage-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .cv-wrap { position: relative; width: 100%; }
+    .cv-wrap canvas { display: block; width: 100%; height: 100%; }
+    #netWrap { height: 360px; border-bottom: 1px solid var(--border-color); }
+    #spaceWrap { height: 420px; }
+    #netCanvas, #spaceCanvas { background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%); }
+    #spaceCanvas { cursor: crosshair; touch-action: none; } #netCanvas { cursor: pointer; }
+    .canvas-overlay-bar { position: absolute; top: 0.75rem; left: 0.75rem; right: 0.75rem; display: flex; justify-content: space-between; gap: 0.5rem; pointer-events: none; flex-wrap: wrap; }
+    .canvas-legend {
+      background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.45rem 0.8rem;
+      display: flex; gap: 0.9rem; font-size: 0.725rem; font-weight: 600; flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .legend-color { width: 9px; height: 9px; border-radius: 3px; }
+    .step-badge {
+      background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-highlight); border-radius: 8px; padding: 0.45rem 0.9rem;
+      font-family: var(--font-mono); font-size: 0.78rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem; max-width: 62%;
+    }
+    .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
+    @media (max-width: 700px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    .metric-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem 0.8rem; }
+    .metric-title { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: #fff; margin-top: 0.2rem; }
+    #chartCanvas { width: 100%; height: 110px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+    #capCanvas { width: 100%; height: 150px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+    #wCanvas { width: 100%; max-width: 260px; aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--border-color); align-self: center; }
+    #hoverTooltip {
+      position: fixed; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--accent-primary);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6); border-radius: 8px; padding: 0.6rem 0.85rem;
+      font-family: var(--font-mono); font-size: 0.75rem; pointer-events: none; display: none; z-index: 100; max-width: 300px; line-height: 1.45;
+    }
+    .math-section { background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .math-section.active-store { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03); }
+    .math-section.active-run { border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.03); }
+    .math-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em; gap: 0.5rem; }
+    .formula-box { background: rgba(0, 0, 0, 0.4); border-radius: 6px; padding: 0.6rem 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; color: #cbd5e1; line-height: 1.5; border-left: 3px solid var(--accent-primary); overflow-x: auto; }
+    .formula-box code { color: #38bdf8; }
+    .hl-red { color: #f43f5e; font-weight: bold; }
+    .hl-green { color: #34d399; font-weight: bold; }
+    .hl-cyan { color: #22d3ee; font-weight: bold; }
+    .hl-warn { color: #fbbf24; font-weight: bold; }
+    table.mini { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.72rem; }
+    table.mini th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 0.2rem 0.35rem; border-bottom: 1px solid var(--border-color); }
+    table.mini td { padding: 0.2rem 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    table.mini td.num, table.mini th.num { text-align: right; }
+    table.mini tr.total td { border-top: 1px solid var(--border-color); font-weight: 700; }
+    .pill { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
+    .pill-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .pill-red { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .pill-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .pill-book { background: rgba(99, 102, 241, 0.25); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); }
+    .hint { font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; }
+    .hint code { color: #38bdf8; font-family: var(--font-mono); }
+    .thumbs { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .thumb { border: 2px solid var(--border-color); border-radius: 6px; padding: 3px; cursor: pointer; background: rgba(0,0,0,0.3); text-align: center; font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); }
+    .thumb.sel { border-color: #facc15; color: #facc15; }
+    .thumb .px { display: grid; gap: 1px; }
+    .thumb .px i { display: block; width: 6px; height: 6px; background: #1e293b; }
+    .thumb .px i.on { background: var(--pos); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    .gal { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .ccard { border: 2px solid var(--border-color); border-radius: 10px; padding: 0.5rem; background: rgba(0,0,0,0.25); min-width: 110px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); }
+    .ccard.win { box-shadow: 0 0 0 2px #facc15; }
+    .ccard .tt { font-weight: 700; margin-bottom: 0.3rem; display: flex; justify-content: space-between; gap: 0.5rem; }
+    .pxg { display: grid; justify-content: start; gap: 1px; margin-bottom: 0.3rem; }
+    .pxg i { display: block; width: 11px; height: 11px; background: #1e293b; }
+    .pxg i.on { background: var(--pos); }
+    .pxg.big i { width: 22px; height: 22px; border-radius: 3px; cursor: pointer; }
+    .pxg.big i.on { background: #22d3ee; }
+    .sthumb { border: 2px solid var(--border-color); border-radius: 6px; padding: 3px; cursor: pointer; background: rgba(0,0,0,0.3); text-align: center; font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono); }
+    .sthumb.cur { box-shadow: 0 0 0 2px #facc15; }
+    .sthumb .pxg { margin: 0 auto 2px; }
+    .caseBtns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+    .caseBtns .btn { padding: 0.4rem 0.2rem; font-size: 0.72rem; }
+    #sweepCanvas { width: 100%; height: 130px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+    #trialCanvas { background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <div class="badge-chip">Silva, Spatti & Flauzino</div>
+      <h1><span>Simulador de ART-1 - Ressonância Adaptativa (Capítulo 10)</span></h1>
+    </div>
+    <div class="header-status">
+      <div class="phase-indicator idle" id="phaseIndicator">
+        <div class="phase-dot"></div>
+        <span id="phaseText">Rede vazia</span>
+      </div>
+      <button class="btn btn-secondary" id="btnReset" title="Reiniciar com a Tabela 10.3 (manutenção industrial), ρ = 0,5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Restaurar Livro
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ESQUERDA -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+          Parâmetros do Modelo
+        </div>
+        <span class="pill pill-book" id="pillTopo">n = 16</span>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label class="form-label">Problema (amostras binárias)</label>
+          <select id="in_dataset" class="form-control">
+            <option value="tab103" selected>★ Livro: manutenção industrial (16 bits)</option>
+            <option value="letras">Letras 5×5 com ruído</option>
+            <option value="small">Exemplo pequeno (8 bits)</option>
+          </select>
+          <span class="hint" id="dsDesc"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><span><span class="stage-tag tag-1">VIGILÂNCIA</span> &nbsp;Parâmetro ρ</span></label>
+          <div class="grid-2">
+            <div><span class="sub-label">ρ (0 &lt; ρ &lt; 1)</span><input type="number" id="in_rho" class="form-control" step="0.05" min="0.01" max="0.999" value="0.5"></div>
+            <div><span class="sub-label">Máx. épocas</span><input type="number" id="in_maxEp" class="form-control" step="1" min="1" max="200" value="1"></div>
+          </div>
+          <input type="range" id="in_rhoR" min="1" max="99" value="50" style="width:100%; accent-color: var(--accent-primary);">
+          <div class="caseBtns" id="caseBtns">
+            <button class="btn btn-secondary" onclick="setRho(0.5)">i · 0,5</button>
+            <button class="btn btn-secondary" onclick="setRho(0.8)">ii · 0,8</button>
+            <button class="btn btn-secondary" onclick="setRho(0.9)">iii · 0,9</button>
+            <button class="btn btn-secondary" onclick="setRho(0.99)">iv · 0,99</button>
+          </div>
+          <div class="grid-2">
+            <div>
+              <span class="sub-label">Ordem das amostras</span>
+              <select id="in_order" class="form-control"><option value="orig" selected>Original</option><option value="shuf">Embaralhada</option></select>
+            </div>
+            <div>
+              <span class="sub-label">Semente da ordem</span>
+              <div style="display:flex; gap:0.35rem;">
+                <input type="number" id="in_seed" class="form-control" step="1" min="0" value="0">
+                <button class="btn btn-secondary" style="padding:0.4rem 0.6rem;" title="Nova semente" onclick="newSeed()">🎲</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-color);">
+
+        <div class="form-group">
+          <label class="form-label"><span><span class="stage-tag tag-2">TREINO</span> &nbsp;Apresentar amostras</span></label>
+          <div class="grid-2">
+            <button class="btn btn-run" onclick="uiStep()">1 Amostra ➔</button>
+            <button class="btn btn-run" onclick="uiEpoch()">1 Época</button>
+          </div>
+          <div class="grid-2">
+            <button class="btn btn-secondary" id="btnAuto" onclick="toggleAuto()">▶ Treinar</button>
+            <div>
+              <select id="in_speed" class="form-control"><option value="1100">Lento</option><option value="600" selected>Médio</option><option value="200">Rápido</option></select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <button class="btn btn-primary" onclick="uiFinish()">Concluir</button>
+            <button class="btn btn-store" onclick="uiReinit()">Esvaziar rede</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Classes por época <span id="chartQ" style="font-family:var(--font-mono); font-size:0.7rem; color:var(--accent-store);"></span></label>
+          <canvas id="chartCanvas" width="310" height="110"></canvas>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nº de classes × ρ <span class="sub-label">(varredura com a ordem e épocas atuais)</span></label>
+          <canvas id="sweepCanvas" width="310" height="130"></canvas>
+          <span class="hint">Quanto maior a vigilância, mais classes. Marca amarela = ρ atual.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTRO -->
+    <section class="card" style="position:relative;">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+          Busca de Ressonância · Classes em F⁽²⁾
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">Clique numa amostra da lista para vê-la como entrada de teste</div>
+      </div>
+      <div class="stage-wrap">
+        <div class="cv-wrap" id="trialWrap" style="height:430px; border-bottom:1px solid var(--border-color);">
+          <canvas id="trialCanvas"></canvas>
+          <div class="canvas-overlay-bar">
+            <div class="canvas-legend" id="legendTr"></div>
+            <div class="step-badge" id="stepSubBadge"><span>Dê 1 amostra para iniciar</span></div>
+          </div>
+        </div>
+        <div style="padding: 1rem 1.25rem; display:flex; flex-direction:column; gap:0.9rem; flex:1;">
+          <div>
+            <div class="form-label" style="margin-bottom:0.4rem;"><span>Camada F⁽²⁾: protótipos W⁽ᵇ⁾ e amostras de cada classe</span><span class="pill pill-book" id="pillGal"></span></div>
+            <div class="gal" id="gallery"></div>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:0.4rem;"><span>Amostras (borda = classe atual; clique para testar)</span></div>
+            <div class="thumbs" id="samples"></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 0.85rem 1.25rem; border-top:1px solid var(--border-color); background: rgba(0,0,0,0.25);">
+        <div class="metrics-grid">
+          <div class="metric-card"><div class="metric-title">Época · amostra</div><div class="metric-value" id="dispEpoch">0</div></div>
+          <div class="metric-card"><div class="metric-title">ρ</div><div class="metric-value" id="dispRho">-</div></div>
+          <div class="metric-card"><div class="metric-title">Classes (m)</div><div class="metric-value" id="dispM" style="color:var(--accent-store);">0</div></div>
+          <div class="metric-card"><div class="metric-title">Reprovações na época</div><div class="metric-value" id="dispReset" style="color:var(--accent-run);">0</div></div>
+          <div class="metric-card"><div class="metric-title">Classes novas na época</div><div class="metric-value" id="dispNew" style="color:var(--accent-warning);">0</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIREITA -->
+    <section class="card col-math">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+          Equações Conforme o Livro (Capítulo 10)
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="math-section">
+          <div class="math-header"><span style="color:var(--accent-store);">I · INICIALIZAÇÃO</span></div>
+          <div class="formula-box">
+            <code>W<sup>(f)</sup><sub>ji</sub> = 1/(1+n)</code> &nbsp;(10.1) &nbsp; <code>W<sup>(b)</sup><sub>ij</sub> = 1</code> &nbsp;(10.2)<br>
+            Neurônio novo nasce assim (n = <b id="eqN">16</b>, 1/(1+n) = <b id="eqF">0,0588</b>) e logo aprende a 1ª amostra.
+          </div>
+        </div>
+
+        <div class="math-section" id="boxComp">
+          <div class="math-header">
+            <span style="color:var(--accent-store);">II · RECONHECIMENTO · Vencedor de F⁽²⁾</span>
+            <span class="pill pill-green" id="pillComp"></span>
+          </div>
+          <div class="formula-box">
+            <code>u<sub>j</sub> = ∑<sub>i</sub> W<sup>(f)</sup><sub>ji</sub>·x<sub>i</sub></code> &nbsp;(10.3)<br>
+            <code>k = argmax<sub>j</sub> u<sub>j</sub></code> &nbsp;(10.4); <code>y<sub>k</sub> = 1</code>, demais 0 &nbsp;(10.5)
+          </div>
+          <div id="tblU"></div>
+        </div>
+
+        <div class="math-section" id="boxSim">
+          <div class="math-header">
+            <span style="color:var(--accent-warning);">III e IV · COMPARAÇÃO e BUSCA</span>
+            <span class="pill pill-warn" id="pillSim"></span>
+          </div>
+          <div class="formula-box">
+            <code>R = ∑<sub>j</sub> W<sup>(b)</sup><sub>jk</sub>·x<sub>j</sub> / ∑<sub>j</sub> x<sub>j</sub></code> &nbsp;(10.6)<br>
+            <span class="hl-green">R &gt; ρ</span>: ressonância, atualiza. &nbsp; <span class="hl-red">R ≤ ρ</span>: desabilita k (u<sub>k</sub> = 0) e repete; se todos reprovam, cria classe nova.
+          </div>
+          <div id="tblTrials"></div>
+        </div>
+
+        <div class="math-section" id="boxAdapt">
+          <div class="math-header">
+            <span style="color:var(--accent-run);">V · ATUALIZAÇÃO dos pesos</span>
+            <span class="pill pill-red" id="pillAdapt"></span>
+          </div>
+          <div class="formula-box">
+            <code>W<sup>(b)</sup><sub>jk</sub>(t+1) = W<sup>(b)</sup><sub>jk</sub>(t)·x<sub>j</sub></code> &nbsp;(10.9) porta AND<br>
+            <code>W<sup>(f)</sup><sub>kj</sub>(t+1) = W<sup>(b)</sup><sub>jk</sub>(t)·x<sub>j</sub> / (½ + ∑<sub>i</sub> W<sup>(b)</sup><sub>ik</sub>(t)·x<sub>i</sub>)</code> &nbsp;(10.10)
+          </div>
+          <div id="tblAdapt"></div>
+        </div>
+
+        <div class="math-section">
+          <div class="math-header"><span style="color:var(--accent-warning);">CASOS DO LIVRO · Tabela 10.3</span><span class="pill pill-book">ordem original</span></div>
+          <div id="tblCases"></div>
+        </div>
+
+        <div class="math-section" id="boxOp">
+          <div class="math-header">
+            <span style="color:var(--accent-secondary);">OPERAÇÃO · Testar uma entrada (sem aprender)</span>
+            <span class="pill pill-book" id="pillOp"></span>
+          </div>
+          <div class="hint">Clique nos bits para montar a entrada x:</div>
+          <div id="probeGrid"></div>
+          <div id="tblProbe"></div>
+        </div>
+
+        <div class="math-section">
+          <div class="math-header"><span>CALCULADORA · exercícios 9 e 10</span><span class="pill pill-book" id="pillCalc"></span></div>
+          <div class="hint">x e W<sup>(b)</sup><sub>k</sub> de 8 bits. Padrão: exercício 9 (R = 3/5 = 0,6).</div>
+          <div class="sub-label">x</div><div id="calcX"></div>
+          <div class="sub-label">W<sup>(b)</sup><sub>k</sub></div><div id="calcW"></div>
+          <div id="calcOut"></div>
+        </div>
+
+        <div class="math-section">
+          <div class="math-header"><span>Leitura Didática</span></div>
+          <div class="hint" id="didactic" style="font-size:0.74rem;"></div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       NÚCLEO MATEMÁTICO (sem DOM) — Capítulo 10: ART-1
+       W(f)=1/(1+n) (10.1) ; W(b)=1 (10.2) ; u_j = ΣW(f)x (10.3) ; k = argmax u (10.4)
+       R = ΣW(b)x / Σx (10.6) ; R > ρ aprova ; W(b) ← W(b)·x (10.9) ; W(f) ← W(b)x / (½+Σ W(b)x) (10.10)
+       ========================================================================== */
+    /* CORE-BEGIN */
+    const S = {
+      ds: 'tab103', n: 16, rows: 4, cols: 4, X: [], names: [],
+      p: { rho: 0.5, order: 'orig', seed: 0, maxEp: 1, speed: 600 },
+      net: null, assign: [], perm: [], epoch: 0, cursor: 0, last: null, hist: [], ep: { resets: 0, news: 0, changed: false },
+      stopped: false, stopReason: '', probe: [], sweep: null, calcX: [1, 0, 1, 1, 1, 0, 1, 0], calcW: [1, 1, 0, 0, 1, 1, 1, 0]
+    };
+    function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    const sumv = a => a.reduce((s, v) => s + v, 0);
+
+    /* Tabela 10.3: 10 situações × 16 variáveis binárias */
+    const TAB103 = [
+      '0101101011011111', '1010111111101000', '1011111101101101', '1110101011110100', '0011111011000001',
+      '1101001011011111', '1010110111101110', '1011110110110101', '0110101011010101', '0011111101100001'].map(s => s.split('').map(Number));
+    const PIX = {
+      'X': ['#...#', '.#.#.', '..#..', '.#.#.', '#...#'], '+': ['..#..', '..#..', '#####', '..#..', '..#..'],
+      'O': ['#####', '#...#', '#...#', '#...#', '#####'], 'L': ['#....', '#....', '#....', '#....', '#####']
+    };
+    const SMALL = [[1, 0, 1, 1, 0, 1, 0, 1], [1, 0, 1, 1, 1, 0, 1, 0], [1, 0, 1, 1, 1, 0, 1, 1], [0, 1, 0, 0, 1, 1, 0, 0], [0, 1, 0, 1, 1, 1, 0, 0], [1, 0, 1, 0, 0, 1, 1, 1]];
+
+    const PRESETS = {
+      tab103: { rho: 0.5, maxEp: 1, order: 'orig', rows: 4, cols: 4,
+        desc: 'Seção 10.8: 10 situações operacionais de um processo industrial, 16 variáveis binárias (mostradas como grade 4×4). Quatro casos: ρ = 0,5; 0,8; 0,9; 0,99. O algoritmo do livro apresenta cada amostra uma vez (1 época); aumente "Máx. épocas" para reapresentar e ver o que acontece quando os protótipos já encolheram.' },
+      letras: { rho: 0.6, maxEp: 1, order: 'orig', rows: 5, cols: 5,
+        desc: '16 amostras 5×5: quatro formas (X, +, O, L) com 4 cópias cada, com ruído (cada pixel inverte com 6%). O protótipo W⁽ᵇ⁾ é a interseção (AND) das amostras da classe: veja-o encolher. Com ρ baixo as letras se misturam; com ρ alto cada cópia ruidosa vira classe.' },
+      small: { rho: 0.6, maxEp: 1, order: 'orig', rows: 2, cols: 4,
+        desc: '6 amostras de 8 bits para acompanhar à mão. As três primeiras usam os vetores dos exemplos e do exercício 9 do livro. Teste ρ = 0,6 e 0,8 e confira cada R.' }
+    };
+
+    function buildData(name, seed) {
+      if (name === 'tab103') return { X: TAB103.map(x => x.slice()), names: TAB103.map((_, i) => 'S' + (i + 1)) };
+      if (name === 'small') return { X: SMALL.map(x => x.slice()), names: SMALL.map((_, i) => 'S' + (i + 1)) };
+      const g = mulberry32(31), keys = Object.keys(PIX), X = [], names = [];
+      for (let v = 0; v < 4; v++) keys.forEach(k => {
+        const x = PIX[k].join('').split('').map(c => c === '#' ? 1 : 0);
+        X.push(x.map(b => (g() < 0.06 ? 1 - b : b))); names.push(k + (v + 1));
+      });
+      return { X, names };
+    }
+
+    function newNet(n) { return { n, Wf: [], Wb: [] }; }
+    function present(net, x, rho, learn) {
+      const n = net.n, sx = sumv(x), m0 = net.Wb.length;
+      const L = { x: x.slice(), sx, m0, trials: [], u: [], win: -1, isNew: false, changed: false, before: null, after: null, den: null, wf: null, zero: false };
+      if (sx === 0) { L.zero = true; return L; }
+      L.u = net.Wf.map(w => w.reduce((s, v, i) => s + v * x[i], 0));
+      const dis = new Set();
+      for (;;) {
+        let k = -1, b = -Infinity;
+        for (let j = 0; j < m0; j++) if (!dis.has(j) && L.u[j] > b + 1e-12) { b = L.u[j]; k = j; }
+        if (k < 0) {
+          L.trials.push({ j: m0, u: sx / (1 + n), inter: sx, R: 1, pass: true, isNew: true, wb: Array(n).fill(1) });
+          L.win = m0; L.isNew = true; break;
+        }
+        const wb = net.Wb[k]; let inter = 0; for (let i = 0; i < n; i++) inter += wb[i] * x[i];
+        const R = inter / sx, pass = R > rho;
+        L.trials.push({ j: k, u: L.u[k], inter, R, pass, isNew: false, wb: wb.slice() });
+        if (pass) { L.win = k; break; }
+        dis.add(k);
+      }
+      if (!learn) return L;
+      if (L.isNew) { net.Wf.push(Array(n).fill(1 / (1 + n))); net.Wb.push(Array(n).fill(1)); }
+      const k = L.win, before = net.Wb[k].slice(), beforeF = net.Wf[k].slice();
+      const after = before.map((v, i) => v * x[i]);
+      const den = 0.5 + sumv(after), wf = after.map(v => v / den);
+      net.Wb[k] = after; net.Wf[k] = wf;
+      L.before = before; L.after = after; L.den = den; L.wf = wf;
+      L.changed = L.isNew || after.some((v, i) => v !== before[i]) || wf.some((v, i) => Math.abs(v - beforeF[i]) > 1e-12);
+      return L;
+    }
+    function orderFor(N, mode, seed) {
+      const ord = Array.from({ length: N }, (_, i) => i);
+      if (mode === 'shuf') { const r = mulberry32(900 + seed * 131); for (let i = N - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ord[i], ord[j]] = [ord[j], ord[i]]; } }
+      return ord;
+    }
+    function runART(X, rho, ord, maxEp) {
+      const net = newNet(X[0].length), assign = X.map(() => -1);
+      let ep = 0;
+      while (ep < maxEp) {
+        let ch = false;
+        for (const k of ord) { const L = present(net, X[k], rho, true); assign[k] = L.win; if (L.changed) ch = true; }
+        ep++; if (!ch) break;
+      }
+      return { m: net.Wb.length, assign, epochs: ep, net };
+    }
+    function groupsOf(assign, m) { return Array.from({ length: m }, (_, j) => assign.map((c, k) => c === j ? k + 1 : null).filter(v => v)); }
+
+    function setupData() {
+      const d = buildData(S.ds, S.p.seed);
+      S.X = d.X; S.names = d.names; S.n = S.X[0].length;
+      const pr = PRESETS[S.ds]; S.rows = pr.rows; S.cols = pr.cols;
+      initNet();
+    }
+    function initNet() {
+      S.net = newNet(S.n); S.assign = S.X.map(() => -1);
+      S.perm = orderFor(S.X.length, S.p.order, S.p.seed);
+      S.epoch = 0; S.cursor = 0; S.last = null; S.hist = []; S.ep = { resets: 0, news: 0, changed: false };
+      S.stopped = false; S.stopReason = ''; S.sweep = null;
+    }
+    function endEpoch() {
+      S.epoch++;
+      S.hist.push({ m: S.net.Wb.length, resets: S.ep.resets, news: S.ep.news });
+      const ch = S.ep.changed;
+      S.ep = { resets: 0, news: 0, changed: false };
+      if (!ch) { S.stopped = true; S.stopReason = 'Estável: nenhuma amostra alterou a rede nesta época'; }
+      else if (S.epoch >= S.p.maxEp) { S.stopped = true; S.stopReason = `Limite de ${S.p.maxEp} época(s)`; }
+    }
+    function stepSample() {
+      const k = S.perm[S.cursor];
+      const L = present(S.net, S.X[k], S.p.rho, true);
+      L.k = k; S.assign[k] = L.win; S.last = L;
+      S.ep.resets += L.trials.filter(t => !t.pass).length; if (L.isNew) S.ep.news++; if (L.changed) S.ep.changed = true;
+      S.cursor++;
+      if (S.cursor >= S.perm.length) { S.cursor = 0; endEpoch(); }
+      return L;
+    }
+    function runEpoch() { let g = 0; do { stepSample(); } while (S.cursor !== 0 && g++ < 5000); return S.stopped; }
+    function sweepRho() {
+      const ord = orderFor(S.X.length, S.p.order, S.p.seed), out = [];
+      for (let r = 0.02; r < 0.995; r += 0.02) out.push({ rho: r, m: runART(S.X, r, ord, S.p.maxEp).m });
+      out.push({ rho: 0.99, m: runART(S.X, 0.99, ord, S.p.maxEp).m });
+      return out;
+    }
+    /* CORE-END */
+
+    /* ==========================================================================
+       INTERFACE
+       ========================================================================== */
+    const $ = id => document.getElementById(id);
+    const fx = (v, d = 3) => v.toFixed(d).replace('.', ',');
+    const CC = ['#22d3ee', '#f472b6', '#facc15', '#a78bfa', '#34d399', '#fb923c', '#60a5fa', '#f87171', '#a3e635', '#e879f9', '#2dd4bf', '#fbbf24'];
+    const ccol = j => j < 0 ? '#475569' : CC[j % CC.length];
+    let autoTimer = null;
+
+    function setPhase(type, label) { $('phaseIndicator').className = 'phase-indicator ' + type; $('phaseText').innerText = label; }
+    function badge(html) { $('stepSubBadge').innerHTML = html; }
+    function readParams() {
+      const v = parseFloat($('in_rho').value);
+      S.p.rho = isFinite(v) ? Math.min(0.999, Math.max(0.01, v)) : 0.5;
+      S.p.maxEp = Math.max(1, Math.floor(parseFloat($('in_maxEp').value) || 1));
+      S.p.speed = parseInt($('in_speed').value, 10) || 600;
+    }
+    function readStructure() { S.p.order = $('in_order').value; S.p.seed = Math.max(0, Math.floor(parseFloat($('in_seed').value) || 0)); }
+    function writeParams() {
+      $('in_rho').value = S.p.rho; $('in_rhoR').value = Math.round(S.p.rho * 100); $('in_maxEp').value = S.p.maxEp;
+      $('in_order').value = S.p.order; $('in_seed').value = S.p.seed; $('in_speed').value = String(S.p.speed);
+      $('caseBtns').style.display = S.ds === 'tab103' ? 'grid' : 'none';
+      $('pillTopo').innerText = `n = ${S.n} bits`;
+      $('eqN').innerText = S.n; $('eqF').innerText = fx(1 / (1 + S.n), 4);
+    }
+
+    function applyPreset(name) {
+      stopAuto();
+      const pr = PRESETS[name];
+      S.ds = name; Object.assign(S.p, { rho: pr.rho, maxEp: pr.maxEp, order: pr.order, seed: 0 });
+      $('in_dataset').value = name; $('dsDesc').innerText = pr.desc;
+      setupData(); S.probe = S.X[0].slice(); S.sel = 0;
+      writeParams(); afterReinit(); renderLegends(); resize(); updateUI();
+    }
+    function afterReinit() { setPhase('idle', 'Rede vazia'); badge('<span>Dê 1 amostra para iniciar</span>'); }
+    function renderLegends() {
+      const it = (c, t) => `<div class="legend-item"><span class="legend-color" style="background:${c};"></span><span>${t}</span></div>`;
+      $('legendTr').innerHTML = it('#22d3ee', 'bit 1') + it('#34d399', 'comum a x e W⁽ᵇ⁾') + it('#f43f5e', '1 de x ausente em W⁽ᵇ⁾');
+    }
+
+    function prepRun() { readParams(); if (S.stopped) { S.stopped = false; S.stopReason = ''; if (S.cursor === 0 && S.epoch >= S.p.maxEp) S.p.maxEp = S.epoch + 1; $('in_maxEp').value = S.p.maxEp; } }
+    function afterRun() {
+      if (S.stopped) { setPhase('ok', 'Treino concluído'); badge(`<span style="color:var(--accent-store)">✓ ${S.stopReason}</span>`); }
+      else setPhase('run', 'Treinando');
+      S.sweep = null; updateUI();
+    }
+    function uiStep() {
+      stopAuto(); prepRun(); const L = stepSample(); S.sel = L.k; S.probe = S.X[L.k].slice();
+      const nf = L.trials.filter(t => !t.pass).length;
+      badge(`<span style="color:var(--accent-run)">${S.names[L.k]} ⇒ ${L.isNew ? 'nova classe ' + (L.win + 1) : 'classe ' + (L.win + 1) + ' (ressoou)'}${nf ? ` · ${nf} reprovação(ões)` : ''}</span>`);
+      afterRun(); renderBadgeKeep();
+    }
+    function renderBadgeKeep() { /* mantém o badge definido em uiStep */ }
+    function uiEpoch() { stopAuto(); prepRun(); runEpoch(); if (S.last) { S.sel = S.last.k; S.probe = S.X[S.last.k].slice(); } afterRun(); }
+    function uiFinish() { stopAuto(); prepRun(); let g = 0; do { runEpoch(); } while (!S.stopped && g++ < 500); if (S.last) { S.sel = S.last.k; S.probe = S.X[S.last.k].slice(); } afterRun(); }
+    function uiReinit() { stopAuto(); readParams(); readStructure(); setupData(); S.probe = S.X[0].slice(); S.sel = 0; writeParams(); afterReinit(); updateUI(); }
+    function newSeed() { $('in_seed').value = Math.floor(Math.random() * 1000); $('in_order').value = 'shuf'; uiReinit(); }
+    function setRho(r) { $('in_rho').value = r; readParams(); S.p.rho = r; $('in_rhoR').value = Math.round(r * 100); uiReinit(); }
+    function toggleAuto() {
+      if (autoTimer) { stopAuto(); setPhase('idle', 'Pausado'); return; }
+      prepRun();
+      $('btnAuto').innerHTML = '⏸ Pausar'; $('btnAuto').classList.replace('btn-secondary', 'btn-run');
+      setPhase('run', 'Treinando');
+      const tick = () => {
+        readParams();
+        const L = stepSample(); S.sel = L.k; S.probe = S.X[L.k].slice();
+        const nf = L.trials.filter(t => !t.pass).length;
+        badge(`<span style="color:var(--accent-run)">${S.names[L.k]} ⇒ ${L.isNew ? 'nova classe ' + (L.win + 1) : 'classe ' + (L.win + 1)}${nf ? ` · ${nf} reprov.` : ''}</span>`);
+        if (S.stopped) { stopAuto(); afterRun(); } else { S.sweep = null; updateUI(); autoTimer = setTimeout(tick, S.p.speed); }
+      };
+      autoTimer = setTimeout(tick, 50);
+    }
+    function stopAuto() {
+      if (autoTimer) clearTimeout(autoTimer); autoTimer = null;
+      const b = $('btnAuto'); b.innerHTML = '▶ Treinar'; b.classList.remove('btn-run'); b.classList.add('btn-secondary');
+    }
+
+    $('in_dataset').addEventListener('change', e => applyPreset(e.target.value));
+    ['in_order', 'in_seed'].forEach(id => $(id).addEventListener('change', uiReinit));
+    $('in_rho').addEventListener('change', () => { readParams(); $('in_rhoR').value = Math.round(S.p.rho * 100); S.sweep = null; updateUI(); });
+    $('in_rhoR').addEventListener('input', e => { $('in_rho').value = (e.target.value / 100).toFixed(2); readParams(); S.sweep = null; updateUI(); });
+    $('in_maxEp').addEventListener('change', () => { readParams(); S.stopped = false; S.sweep = null; updateUI(); });
+    $('in_speed').addEventListener('change', readParams);
+    $('btnReset').addEventListener('click', () => applyPreset('tab103'));
+
+    /* ==========================================================================
+       PAINEL
+       ========================================================================== */
+    function gridHtml(bits, cls2, extra) {
+      return `<div class="pxg ${cls2 || ''}" style="grid-template-columns:repeat(${S.cols},auto);">${bits.map((b, i) => `<i class="${b ? 'on' : ''}" ${extra ? extra(i) : ''}></i>`).join('')}</div>`;
+    }
+    function bitsStr(a) { return a.map(v => (v ? '1' : '0')).join(''); }
+    function trialTable(L, withProbe) {
+      let t = '<table class="mini"><tr><th>Tent.</th><th>neurônio</th><th class="num">u</th><th class="num">∑W⁽ᵇ⁾x / ∑x</th><th class="num">R</th><th></th></tr>';
+      L.trials.forEach((tr, i) => {
+        t += `<tr><td class="num">${i + 1}</td><td style="color:${ccol(tr.j)}">${tr.j + 1}${tr.isNew ? ' (nova)' : ''}</td><td class="num">${fx(tr.u, 3)}</td><td class="num">${tr.inter}/${L.sx}</td><td class="num ${tr.pass ? 'hl-green' : 'hl-red'}">${fx(tr.R, 3)}</td><td>${tr.pass ? `<span class="pill pill-green">R &gt; ρ</span>` : '<span class="pill pill-red">R ≤ ρ</span>'}</td></tr>`;
+      });
+      return t + '</table>';
+    }
+
+    function updateUI() {
+      const p = S.p, m = S.net.Wb.length;
+      $('dispEpoch').innerText = `${S.epoch} · ${S.cursor}/${S.X.length}`;
+      $('dispRho').innerText = fx(p.rho, 2);
+      $('dispM').innerText = m; $('dispReset').innerText = S.ep.resets; $('dispNew').innerText = S.ep.news;
+      $('chartQ').innerText = `m = ${m}`;
+      $('pillGal').innerText = `${m} classe(s) · ${S.assign.filter(c => c >= 0).length}/${S.X.length} amostras`;
+
+      /* II reconhecimento */
+      const L = S.last;
+      $('pillComp').innerText = L ? `${S.names[L.k]} · Σx = ${L.sx}` : 'nenhuma amostra ainda';
+      if (L && L.m0 > 0) {
+        const win = L.trials[0].isNew ? -1 : L.trials[0].j;
+        let t = '<table class="mini"><tr><th>Neurônio</th><th class="num">u<sub>j</sub></th></tr>';
+        L.u.slice(0, 10).forEach((u, j) => { t += `<tr><td style="color:${ccol(j)}" class="${j === win ? 'hl-green' : ''}">${j === win ? '★ ' : ''}${j + 1}</td><td class="num ${j === win ? 'hl-green' : ''}">${fx(u, 4)}</td></tr>`; });
+        $('tblU').innerHTML = t + `</table>${L.u.length > 10 ? `<div class="hint">… e mais ${L.u.length - 10}.</div>` : ''}<div class="hint">Estado de F⁽²⁾ antes desta amostra: ${L.m0} neurônio(s).</div>`;
+      } else $('tblU').innerHTML = L ? '<div class="hint">F⁽²⁾ estava vazia: o 1º neurônio é habilitado direto.</div>' : '<div class="hint">Dê um passo de 1 amostra.</div>';
+
+      /* III e IV */
+      if (L) {
+        $('pillSim').innerText = L.isNew ? 'todos reprovaram: classe nova' : `ressonância na classe ${L.win + 1}`;
+        $('tblTrials').innerHTML = trialTable(L) + `<div class="hint">ρ = ${fx(p.rho, 2)}. Aprovado só se R &gt; ρ (estritamente).</div>`;
+      } else { $('pillSim').innerText = ''; $('tblTrials').innerHTML = ''; }
+      $('boxSim').classList.toggle('active-run', !!L && !S.stopped);
+
+      /* V */
+      if (L && L.after) {
+        const act = L.wf.map((v, i) => v > 0 ? i + 1 : null).filter(v => v);
+        $('pillAdapt').innerText = `neurônio ${L.win + 1}`;
+        $('tblAdapt').innerHTML = `<table class="mini"><tr><td>W⁽ᵇ⁾ antes</td><td>${bitsStr(L.before)}</td></tr><tr><td>x</td><td>${bitsStr(L.x)}</td></tr><tr><td class="hl-cyan">W⁽ᵇ⁾ depois (AND)</td><td class="hl-cyan">${bitsStr(L.after)}</td></tr></table>`
+          + `<div class="hint">Denominador de (10.10) = ½ + ${sumv(L.after)} = <b>${fx(L.den, 2)}</b>. Cada bit ativo de W⁽ᶠ⁾ vale 1/${fx(L.den, 2)} = <b>${fx(1 / L.den, 4)}</b>${L.changed ? '' : '. <span class="hl-warn">Nada mudou: amostra já conhecida.</span>'}</div>`;
+      } else { $('pillAdapt').innerText = ''; $('tblAdapt').innerHTML = '<div class="hint">Aparece depois que uma amostra é aprovada.</div>'; }
+      $('boxAdapt').classList.toggle('active-run', !!(L && L.after) && !S.stopped);
+
+      /* casos do livro */
+      if (S.ds === 'tab103') {
+        const ord = orderFor(S.X.length, 'orig', 0);
+        let t = '<table class="mini"><tr><th>Caso</th><th>ρ</th><th class="num">m</th><th>classes (amostras), 1 época</th></tr>';
+        [['i', 0.5], ['ii', 0.8], ['iii', 0.9], ['iv', 0.99]].forEach(([c, r]) => {
+          const o = runART(TAB103, r, ord, 1), o2 = runART(TAB103, r, ord, 50);
+          t += `<tr><td>${c}</td><td>${fx(r, 2)}</td><td class="num hl-cyan">${o.m}</td><td>${groupsOf(o.assign, o.m).map(g => '{' + g.join(',') + '}').join(' ')}<br><span style="color:var(--text-muted)">até estabilizar: ${o2.m} classes (${o2.epochs} ép.)</span></td></tr>`;
+        });
+        $('tblCases').innerHTML = t + '</table><div class="hint">Ordem original, uma apresentação de cada amostra. Reapresentar depois que os protótipos encolheram pode criar classes extras.</div>';
+      } else $('tblCases').innerHTML = '<div class="hint">Disponível no problema do livro.</div>';
+
+      renderGallery(); renderProbe(); renderCalc(); renderDidactic(); drawChart(); drawSweep();
+    }
+
+    function renderGallery() {
+      const m = S.net.Wb.length, G = groupsOf(S.assign, m), winJ = S.last ? S.last.win : -1;
+      $('gallery').innerHTML = m ? S.net.Wb.map((w, j) => `<div class="ccard ${j === winJ ? 'win' : ''}" style="border-color:${ccol(j)}"><div class="tt"><span style="color:${ccol(j)}">Classe ${j + 1}</span><span>${sumv(w)} bits</span></div>${gridHtml(w)}<div>${G[j].map(k => S.names[k - 1]).join(' ') || '-'}</div></div>`).join('') : '<span class="hint">F⁽²⁾ vazia. Nenhum protótipo ainda.</span>';
+      $('samples').innerHTML = S.X.map((x, k) => `<div class="sthumb ${k === S.sel ? 'cur' : ''}" style="border-color:${ccol(S.assign[k])}" onclick="pickSample(${k})">${gridHtml(x)}${S.names[k]}${S.assign[k] >= 0 ? ' → ' + (S.assign[k] + 1) : ''}</div>`).join('');
+    }
+    function pickSample(k) { S.sel = k; S.probe = S.X[k].slice(); updateUI(); }
+    function renderProbe() {
+      $('probeGrid').innerHTML = gridHtml(S.probe, 'big', i => `onclick="toggleBit(${i})"`);
+      const L = present(S.net, S.probe, S.p.rho, false);
+      if (L.zero) { $('pillOp').innerText = 'x = 0'; $('tblProbe').innerHTML = '<div class="hint">Entrada nula: não definida (∑x = 0).</div>'; return; }
+      if (!S.net.Wb.length) { $('pillOp').innerText = 'rede vazia'; $('tblProbe').innerHTML = '<div class="hint">Treine pelo menos uma amostra.</div>'; return; }
+      $('pillOp').innerText = L.isNew ? 'nova classe' : `classe ${L.win + 1}`;
+      $('tblProbe').innerHTML = trialTable(L) + `<div class="hint">${L.isNew ? '<span class="hl-warn">Nenhuma classe aprovou:</span> aprender esta entrada criaria a classe ' + (L.win + 1) + '.' : 'Ressonância com a classe <b style="color:' + ccol(L.win) + '">' + (L.win + 1) + '</b>. Operar não altera os pesos.'}</div>`;
+    }
+    function toggleBit(i) { S.probe[i] = 1 - S.probe[i]; updateUI(); }
+    function renderCalc() {
+      const bit = (arr, key) => `<div class="pxg big" style="grid-template-columns:repeat(8,auto);">${arr.map((b, i) => `<i class="${b ? 'on' : ''}" onclick="S.${key}[${i}]=1-S.${key}[${i}];updateUI()"></i>`).join('')}</div>`;
+      $('calcX').innerHTML = bit(S.calcX, 'calcX'); $('calcW').innerHTML = bit(S.calcW, 'calcW');
+      const sx = sumv(S.calcX), inter = S.calcX.reduce((s, v, i) => s + v * S.calcW[i], 0);
+      if (!sx) { $('calcOut').innerHTML = '<div class="hint">x nulo.</div>'; $('pillCalc').innerText = ''; return; }
+      const R = inter / sx, ok = R > S.p.rho;
+      $('pillCalc').innerText = `R = ${inter}/${sx} = ${fx(R, 3)}`;
+      $('calcOut').innerHTML = `<div class="hint">Com ρ = ${fx(S.p.rho, 2)}: <b class="${ok ? 'hl-green' : 'hl-red'}">${ok ? 'aprovado' : 'reprovado'}</b>. Aprovaria para qualquer ρ &lt; ${fx(R, 3)}.</div>`;
+    }
+    function renderDidactic() {
+      const p = S.p; let m;
+      if (!S.last) m = '<b>1.</b> A rede nasce vazia. A 1ª amostra cria a classe 1: W⁽ᵇ⁾ vira cópia dela. <b>2.</b> Nas seguintes, F⁽²⁾ propõe o neurônio de maior u e F⁽¹⁾ confere: R mede que fração dos 1 de x o protótipo cobre. Se R &gt; ρ, ressonância; senão o neurônio é inibido e testa-se o próximo, até criar uma classe nova.';
+      else if (S.stopped) m = `<b>Treino concluído.</b> ${S.net.Wb.length} classe(s). ` + (p.maxEp === 1 ? 'Uma única passada, como no algoritmo do livro. Aumente as épocas para reapresentar as amostras.' : '') + ' Ordens diferentes das amostras podem dar classes diferentes: ART-1 é um algoritmo leader-follower.';
+      else if (S.last.isNew) m = `<b>Plasticidade.</b> Nenhuma classe existente passou no teste (ρ = ${fx(p.rho, 2)}); uma nova foi criada sem tocar nas outras: as classes antigas continuam intactas (estabilidade).`;
+      else if (!S.last.changed) m = '<b>Estabilidade.</b> A amostra é conhecida: ressoou direto e nenhum peso mudou.';
+      else m = '<b>Ressonância.</b> A classe vencedora aprova a amostra e seu protótipo encolhe para a interseção (AND): só os bits comuns a todos os membros sobram.';
+      $('didactic').innerHTML = m;
+    }
+
+    function drawChart() {
+      const c = $('chartCanvas'), g = c.getContext('2d'), w = c.width, h = c.height;
+      g.clearRect(0, 0, w, h);
+      const H = S.hist.map(x => x.m).concat([S.net.Wb.length]);
+      if (H.length < 2) { g.fillStyle = '#64748b'; g.font = '10px "JetBrains Mono"'; g.textAlign = 'center'; g.fillText('Termine uma época para ver o gráfico...', w / 2, h / 2); return; }
+      const hi = Math.max(2, ...H), bw = Math.min(30, (w - 30) / H.length);
+      g.fillStyle = '#64748b'; g.font = '9px "JetBrains Mono"'; g.textAlign = 'left'; g.fillText(hi, 3, 10); g.fillText('0', 3, h - 4);
+      H.forEach((v, i) => { const bh = v / hi * (h - 24); g.fillStyle = i === H.length - 1 ? 'rgba(52,211,153,0.4)' : '#34d399'; g.fillRect(26 + i * bw, h - 8 - bh, Math.max(2, bw - 3), bh); });
+    }
+    function drawSweep() {
+      const c = $('sweepCanvas'), g = c.getContext('2d'), w = c.width, h = c.height;
+      g.clearRect(0, 0, w, h);
+      if (!S.sweep) S.sweep = sweepRho();
+      const D = S.sweep, hi = Math.max(...D.map(d => d.m)), ml = 26, mb = 16, X = r => ml + r * (w - ml - 8), Y = v => h - mb - v / hi * (h - mb - 12);
+      g.fillStyle = '#64748b'; g.font = '9px "JetBrains Mono"'; g.textAlign = 'left'; g.fillText(hi, 3, 10); g.fillText('0', 3, h - mb);
+      g.textAlign = 'center'; [0, 0.5, 1].forEach(r => g.fillText(r, X(r), h - 4));
+      g.beginPath(); D.forEach((d, i) => { const x = X(d.rho), y = Y(d.m); i ? (g.lineTo(x, y - 0) ) : g.moveTo(x, y); });
+      g.strokeStyle = '#a78bfa'; g.lineWidth = 2; g.stroke();
+      g.strokeStyle = '#facc15'; g.lineWidth = 1.5; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(S.p.rho), 8); g.lineTo(X(S.p.rho), h - mb); g.stroke(); g.setLineDash([]);
+      const cur = runART(S.X, S.p.rho, orderFor(S.X.length, S.p.order, S.p.seed), S.p.maxEp).m;
+      g.beginPath(); g.arc(X(S.p.rho), Y(cur), 4, 0, 7); g.fillStyle = '#facc15'; g.fill();
+    }
+
+    /* ==========================================================================
+       CANVAS: busca de ressonância (tentativas)
+       ========================================================================== */
+    const trCv = $('trialCanvas'), trG = trCv.getContext('2d'), dim = { w: 0, h: 0 };
+    function resize() { const r = $('trialWrap').getBoundingClientRect(), dpr = window.devicePixelRatio || 1; dim.w = r.width; dim.h = r.height; trCv.width = Math.round(r.width * dpr); trCv.height = Math.round(r.height * dpr); trG.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    window.addEventListener('resize', resize);
+    function gridDraw(g, x0, y0, cell, bits, colorFn) {
+      for (let i = 0; i < bits.length; i++) {
+        const r = Math.floor(i / S.cols), c = i % S.cols;
+        g.fillStyle = colorFn(i, bits[i]); g.fillRect(x0 + c * cell, y0 + r * cell, cell - 1, cell - 1);
+      }
+    }
+    function drawTrials() {
+      const g = trG, W = dim.w, H = dim.h; if (!W) return;
+      g.clearRect(0, 0, W, H);
+      const L = S.last;
+      g.fillStyle = '#94a3b8'; g.font = '600 11px "Plus Jakarta Sans"'; g.textAlign = 'left';
+      if (!L) { g.textAlign = 'center'; g.fillStyle = '#64748b'; g.font = '13px "Plus Jakarta Sans"'; g.fillText('Dê 1 amostra: aqui aparecem as tentativas de ressonância (F⁽²⁾ propõe, F⁽¹⁾ confere).', W / 2, H / 2); return; }
+      const top = 78, bigCell = Math.min(24, Math.floor(150 / S.cols));
+      g.fillText(`Entrada x = ${S.names[L.k]}  (Σx = ${L.sx})`, 24, top - 8);
+      gridDraw(g, 24, top, bigCell, L.x, (i, b) => b ? '#22d3ee' : '#1e293b');
+      const cell = 11, gh = S.rows * cell, rowH = gh + 22, xr = 24 + S.cols * bigCell + 60, maxRows = Math.max(1, Math.floor((H - top - 14) / rowH));
+      const tr = L.trials.slice(-maxRows);
+      g.fillStyle = '#94a3b8'; g.font = '600 10px "Plus Jakarta Sans"'; g.textAlign = 'left';
+      g.fillText('F⁽²⁾ propõe (maior u)', xr, top - 8); g.fillText('W⁽ᵇ⁾ do neurônio', xr + 128, top - 8); g.fillText('x ∧ W⁽ᵇ⁾ (comparação em F⁽¹⁾)', xr + 128 + S.cols * cell + 40, top - 8);
+      if (L.trials.length > tr.length) { g.fillStyle = '#64748b'; g.fillText(`… ${L.trials.length - tr.length} tentativa(s) anterior(es)`, xr, H - 6); }
+      tr.forEach((t, i) => {
+        const y = top + i * rowH, xw = xr + 128, xa = xw + S.cols * cell + 40;
+        g.fillStyle = ccol(t.j); g.beginPath(); g.arc(xr + 10, y + gh / 2, 11, 0, 7); g.fill();
+        g.fillStyle = '#0f172a'; g.font = 'bold 11px "JetBrains Mono"'; g.textAlign = 'center'; g.fillText(t.j + 1, xr + 10, y + gh / 2 + 4);
+        g.textAlign = 'left'; g.fillStyle = '#cbd5e1'; g.font = '10px "JetBrains Mono"'; g.fillText('u = ' + fx(t.u, 3), xr + 26, y + gh / 2 + 4);
+        gridDraw(g, xw, y, cell, t.wb, (i2, b) => b ? ccol(t.j) : '#1e293b');
+        g.fillStyle = '#94a3b8'; g.font = 'bold 13px "JetBrains Mono"'; g.fillText('∧', xw + S.cols * cell + 14, y + gh / 2 + 4);
+        gridDraw(g, xa, y, cell, L.x, (i2, b) => b ? (t.wb[i2] ? '#34d399' : '#f43f5e') : '#1e293b');
+        const tx = xa + S.cols * cell + 14;
+        g.font = 'bold 11px "JetBrains Mono"'; g.fillStyle = t.pass ? '#34d399' : '#f87171';
+        g.fillText(`R = ${t.inter}/${L.sx} = ${fx(t.R, 3)}  ${t.pass ? '>' : '≤'} ρ = ${fx(S.p.rho, 2)}`, tx, y + gh / 2 - 3);
+        g.fillText(t.pass ? (t.isNew ? '✓ classe nova' : '✓ ressonância') : '✗ reset: inibe neurônio', tx, y + gh / 2 + 12);
+      });
+    }
+    function frame() { drawTrials(); requestAnimationFrame(frame); }
+
+    window.onload = () => { resize(); applyPreset('tab103'); requestAnimationFrame(frame); };
+  </script>
+</body>
+</html>
